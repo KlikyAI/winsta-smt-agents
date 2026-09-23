@@ -1,0 +1,167 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: winsta-smt-frontend
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      - api
+
+  api:
+    build: ./backend
+    container_name: winsta-smt-api
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SOCIAL_OAUTH_CALLBACK_BASE_URL=${SOCIAL_OAUTH_CALLBACK_BASE_URL:-http://localhost:8005}
+      - SOCIAL_FRONTEND_BASE_URL=${SOCIAL_FRONTEND_BASE_URL:-http://localhost:3005}
+      - SUPABASE_URL=${SUPABASE_URL:-https://qwkvnjavbsitfdjszbzc.supabase.co}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-social-media-assets}
+      - SUPABASE_TREND_REFERENCE_BUCKET=${SUPABASE_TREND_REFERENCE_BUCKET:-trend-reference-images}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - CLOUDFLARE_FLUX_MODEL=${CLOUDFLARE_FLUX_MODEL:-@cf/black-forest-labs/flux-1-schnell}
+      - CLOUDFLARE_FLUX_STEPS=${CLOUDFLARE_FLUX_STEPS:-4}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app:ro
+    # OAuth callbacks contain one-time authorization codes in the query string.
+    # Application middleware logs the request path safely, so disable Uvicorn's
+    # raw access log to keep callback credentials out of container logs.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
+
+  worker:
+    build: ./backend
+    container_name: winsta-smt-worker
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SUPABASE_URL=${SUPABASE_URL:-https://qwkvnjavbsitfdjszbzc.supabase.co}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-social-media-assets}
+      - SUPABASE_TREND_REFERENCE_BUCKET=${SUPABASE_TREND_REFERENCE_BUCKET:-trend-reference-images}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - CLOUDFLARE_FLUX_MODEL=${CLOUDFLARE_FLUX_MODEL:-@cf/black-forest-labs/flux-1-schnell}
+      - CLOUDFLARE_FLUX_STEPS=${CLOUDFLARE_FLUX_STEPS:-4}
+    depends_on:
+      - api
+    volumes:
+      - ./backend:/app:ro
+    command: celery -A app.workers.celery_app worker --loglevel=info -Q trend.collect,trend.process,trend.ai,trend.integration,social.generate,social.publish,social.analytics
+
+  beat:
+    build: ./backend
+    container_name: winsta-smt-beat
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - api
+    volumes:
+      - ./backend:/app:ro
+    # Keep Celery's mutable schedule database out of the source checkout.
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: winsta-smt-redis
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Nginx Reverse Proxy (Main Entrypoint)
+  # ============================================================================
+  proxy:
+    image: nginx:alpine
+    container_name: winsta-smt-proxy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - FRONTEND_PORT=${FRONTEND_PORT:-3005}
+    ports:
+      - "${FRONTEND_PORT:-3005}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/proxy.conf:/etc/nginx/proxy.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/log:/var/log/nginx
+      - nginx_cache_media:/var/cache/nginx/media
+      - nginx_cache_api:/var/cache/nginx/api
+      - nginx_cache_static:/var/cache/nginx/static
+    depends_on:
+      - frontend
+      - api
+    healthcheck:
+      test: [ "CMD-SHELL", "test -f /var/run/nginx.pid && ps aux | grep -v grep | grep nginx || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+volumes:
+  postgres_data:
+  redis_data:
+  nginx_cache_media:
+  nginx_cache_api:
+  nginx_cache_static:

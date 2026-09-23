@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <rect width="36" height="36" rx="9" fill="#0f172a" />
+  <path
+    d="M6 10.5C6 9.67157 6.67157 9 7.5 9H9.2C9.8 9 10.34 9.38 10.53 9.95L13.8 19.8L11.1 26.5C10.8 27.2 9.9 27.5 9.2 27.1L7.2 26C6.5 25.6 6 24.8 6 24V10.5Z"
+    fill="url(#fav-left-grad)"
+  />
+  <path
+    d="M30 10.5C30 9.67157 29.3284 9 28.5 9H26.8C26.2 9 25.66 9.38 25.47 9.95L22.2 19.8L24.9 26.5C25.2 27.2 26.1 27.5 26.8 27.1L28.8 26C29.5 25.6 30 24.8 30 24V10.5Z"
+    fill="url(#fav-right-grad)"
+  />
+  <path
+    d="M18 6.5L22.2 16.8L18 24.5L13.8 16.8L18 6.5Z"
+    fill="#8b5cf6"
+  />
+  <path
+    d="M18 9L20.2 16.2L18 21.5L15.8 16.2L18 9Z"
+    fill="#ffffff"
+    fill-opacity="0.9"
+  />
+  <circle cx="28.5" cy="7.5" r="1.8" fill="#a78bfa" />
+  <defs>
+    <linearGradient id="fav-left-grad" x1="6" y1="9" x2="14" y2="27" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="50%" stop-color="#c4b5fd" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="fav-right-grad" x1="30" y1="9" x2="22" y2="27" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="50%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+  </defs>
+</svg>

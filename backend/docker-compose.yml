@@ -1,0 +1,154 @@
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: pta-frontend
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    ports:
+      - "${FRONTEND_PORT:-3005}:80" 
+    depends_on:
+      - api
+
+  api:
+    build: .
+    container_name: pta-api
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    ports:
+      - "127.0.0.1:${API_PORT:-8005}:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SOCIAL_OAUTH_CALLBACK_BASE_URL=${SOCIAL_OAUTH_CALLBACK_BASE_URL:-http://localhost:8005}
+      - SOCIAL_FRONTEND_BASE_URL=${SOCIAL_FRONTEND_BASE_URL:-http://localhost:3005}
+      - SUPABASE_URL=${SUPABASE_URL:-https://qwkvnjavbsitfdjszbzc.supabase.co}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-social-media-assets}
+      - SUPABASE_TREND_REFERENCE_BUCKET=${SUPABASE_TREND_REFERENCE_BUCKET:-trend-reference-images}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - CLOUDFLARE_FLUX_MODEL=${CLOUDFLARE_FLUX_MODEL:-@cf/black-forest-labs/flux-1-schnell}
+      - CLOUDFLARE_FLUX_STEPS=${CLOUDFLARE_FLUX_STEPS:-4}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app:ro
+    # OAuth callbacks contain one-time authorization codes in the query string.
+    # Application middleware logs the request path safely, so disable Uvicorn's
+    # raw access log to keep callback credentials out of container logs.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
+
+  worker:
+    build: .
+    container_name: pta-worker
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SUPABASE_URL=${SUPABASE_URL:-https://qwkvnjavbsitfdjszbzc.supabase.co}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-social-media-assets}
+      - SUPABASE_TREND_REFERENCE_BUCKET=${SUPABASE_TREND_REFERENCE_BUCKET:-trend-reference-images}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - CLOUDFLARE_FLUX_MODEL=${CLOUDFLARE_FLUX_MODEL:-@cf/black-forest-labs/flux-1-schnell}
+      - CLOUDFLARE_FLUX_STEPS=${CLOUDFLARE_FLUX_STEPS:-4}
+    depends_on:
+      - api
+    volumes:
+      - .:/app:ro
+    command: celery -A app.workers.celery_app worker --loglevel=info -Q trend.collect,trend.process,trend.ai,trend.integration,social.generate,social.publish,social.analytics
+
+  beat:
+    build: .
+    container_name: pta-beat
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - api
+    volumes:
+      - .:/app:ro
+    # Keep Celery's mutable schedule database out of the source checkout.
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pta-postgres
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: prompt_trends
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pta-redis
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

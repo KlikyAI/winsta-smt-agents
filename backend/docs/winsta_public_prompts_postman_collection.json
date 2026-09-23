@@ -1,0 +1,298 @@
+{
+  "info": {
+    "_postman_id": "9b64c781-a2ef-4573-b31c-7f5b8c9d0012",
+    "name": "Winsta AI - Public Prompts API",
+    "description": "Official Postman Collection for Winsta AI Studio's Public Prompts GET API. Access validated 6-modality prompt packages and system health endpoints without authentication.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://bookmind.my.id",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Public Prompts - List All (Default)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/public/prompts?page=1&page_size=20",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "prompts"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Page number (starting from 1)"
+            },
+            {
+              "key": "page_size",
+              "value": "20",
+              "description": "Number of items per page (1 - 100)"
+            }
+          ]
+        },
+        "description": "Fetches a paginated list of validated, integration-ready prompt packages without requiring authentication."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Public Prompts - Filter by Category",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/public/prompts?category=tech_ai&sort=quality_desc&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "prompts"
+          ],
+          "query": [
+            {
+              "key": "category",
+              "value": "tech_ai",
+              "description": "Category slug filter (e.g. tech_ai, interior_architecture, beauty_skincare, luxury_lifestyle)"
+            },
+            {
+              "key": "sort",
+              "value": "quality_desc",
+              "description": "Sorting criteria: newest | oldest | quality_desc"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Retrieves prompt packages filtered by category, sorted by highest AI quality score."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Public Prompts - Keyword Search",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/public/prompts?search=majlis&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "prompts"
+          ],
+          "query": [
+            {
+              "key": "search",
+              "value": "majlis",
+              "description": "Search keyword matching trend title or prompt descriptions (minimum 2 characters)"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Searches prompt packages by title keywords or prompt narrative content."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Public Prompts - With Reference Image Only",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/public/prompts?has_reference_image=true&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "prompts"
+          ],
+          "query": [
+            {
+              "key": "has_reference_image",
+              "value": "true",
+              "description": "Filter only prompt packages that include an AI-generated reference visual image"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Retrieves prompt packages that have visual reference images attached."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Public Prompts - Quality Threshold (Score >= 80)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/public/prompts?min_quality_score=80.0&sort=quality_desc&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "prompts"
+          ],
+          "query": [
+            {
+              "key": "min_quality_score",
+              "value": "80.0",
+              "description": "Minimum quality score threshold (0.0 - 100.0)"
+            },
+            {
+              "key": "sort",
+              "value": "quality_desc"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Filters prompt packages by minimum quality score threshold."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Public Prompts - Filter by Date Range",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/public/prompts?date_from=2026-08-01&date_to=2026-08-30&page=1&page_size=20",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "prompts"
+          ],
+          "query": [
+            {
+              "key": "date_from",
+              "value": "2026-08-01",
+              "description": "Inclusive start creation date (Format: YYYY-MM-DD)"
+            },
+            {
+              "key": "date_to",
+              "value": "2026-08-30",
+              "description": "Inclusive end creation date (Format: YYYY-MM-DD)"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "page_size",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Retrieves prompt packages created within a specific date range."
+      },
+      "response": []
+    },
+    {
+      "name": "7. System Health Check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/health/ready",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health",
+            "ready"
+          ]
+        },
+        "description": "Health check verifying server readiness, PostgreSQL database connection, and Redis cache."
+      },
+      "response": []
+    }
+  ]
+}
